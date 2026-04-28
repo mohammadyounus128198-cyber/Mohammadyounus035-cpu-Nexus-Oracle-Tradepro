@@ -31,6 +31,10 @@ import {
 } from './lib/state';
 import { RiskManager, DEFAULT_RISK_CONFIG, RiskMetrics } from './lib/riskManager';
 import { AnalyticsEngine, PerformanceMetrics } from './lib/analyticsEngine';
+import { RealtimeMarketService, PriceTick } from './lib/realtimeMarketService';
+import { tradeEngine, EngineEvent, tradeEngine as teInstance } from './lib/tradeEngine';
+import { orderBook } from './lib/orderBook';
+import { StrategyOrchestrator, MeanReversionStrategy } from './lib/strategyEngine';
 import runIntegrationTests from '../tradepro.test';
 
 // --- Sub-components ---
@@ -68,10 +72,15 @@ export default function App() {
   const [currentSymbol, setCurrentSymbol] = useState('AAPL');
   const [qty, setQty] = useState('');
   const [buySide, setBuySide] = useState(true);
+  const [engineEvents, setEngineEvents] = useState<EngineEvent[]>([]);
 
   // Refs for engine persistence across renders
   const engineRef = useRef<MarketDataEngine | null>(null);
   const portfolioRef = useRef<PortfolioManager | null>(null);
+  const riskRef = useRef<RiskManager | null>(null);
+  const analyticsRef = useRef<AnalyticsEngine | null>(null);
+  const marketServiceRef = useRef<RealtimeMarketService | null>(null);
+  const orchestratorRef = useRef<StrategyOrchestrator | null>(null);
   const chartRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -80,20 +89,82 @@ export default function App() {
       const id = await getOrCreateIdentity();
       setIdentity(id);
 
-      engineRef.current = new MarketDataEngine();
-      portfolioRef.current = new PortfolioManager();
+      const engine = new MarketDataEngine();
+      engineRef.current = engine;
+
+      const portfolioManager = new PortfolioManager();
+      portfolioRef.current = portfolioManager;
+
       const risk = new RiskManager(DEFAULT_RISK_CONFIG, 10000000);
+      riskRef.current = risk;
+
       const analytics = new AnalyticsEngine();
-      
+      analyticsRef.current = analytics;
+
+      const marketService = new RealtimeMarketService();
+      marketServiceRef.current = marketService;
+
+      const orchestrator = new StrategyOrchestrator(marketService);
+      orchestratorRef.current = orchestrator;
+
+      // Add strategy
+      const meanRev = new MeanReversionStrategy({
+        name: 'MeanRev',
+        enabled: true,
+        symbols: ['AAPL', 'NVDA', 'TSLA', 'BTC'],
+        maxPositionSize: 50,
+        entryThreshold: 2.0,
+        exitThreshold: 1.0,
+        holdingPeriod: 3600000,
+        cooldownPeriod: 60000
+      }, marketService, risk);
+      orchestrator.addStrategy(meanRev);
+
+      // Listen for trade execution
+      const unsubscribeExec = teInstance.on('tradeExecuted', (event) => {
+        const { trade } = event.data;
+        portfolioManager.executeTrade(trade);
+        setPortfolio(portfolioManager.getSnapshot());
+      });
+
+      // Listen for all events for terminal
+      teInstance.on('orderSubmitted', (e) => setEngineEvents(prev => [e, ...prev].slice(0, 50)));
+      teInstance.on('orderFilled', (e) => setEngineEvents(prev => [e, ...prev].slice(0, 50)));
+      teInstance.on('tradeExecuted', (e) => setEngineEvents(prev => [e, ...prev].slice(0, 50)));
+
       const interval = setInterval(() => {
-        if (engineRef.current && portfolioRef.current) {
+        if (engineRef.current && portfolioManager) {
           const newQuotes = engineRef.current.tick();
           setQuotes(new Map(newQuotes));
           
-          portfolioRef.current.updatePrices(newQuotes);
-          const snap = portfolioRef.current.getSnapshot();
+          portfolioManager.updatePrices(newQuotes);
+          const snap = portfolioManager.getSnapshot();
           setPortfolio(snap);
           
+          // Market Service Integration
+          newQuotes.forEach(q => {
+            const tick: PriceTick = {
+              symbol: q.symbol,
+              price: q.price,
+              bid: q.price - 10,
+              ask: q.price + 10,
+              volume: 1000,
+              timestamp: Date.now(),
+              source: 'poll'
+            };
+            marketService.emit('tick', tick);
+            
+            // Order Book update
+            orderBook.clear();
+            orderBook.addOrder('o1', 'SELL', q.price + 10, 1200);
+            orderBook.addOrder('o2', 'SELL', q.price + 20, 850);
+            orderBook.addOrder('o3', 'BUY', q.price - 10, 1100);
+            orderBook.addOrder('o4', 'BUY', q.price - 20, 2420);
+
+            // Process open orders in tradeEngine
+            teInstance.processOrders(q.symbol, q.price, (t) => "0x" + Math.random().toString(16).slice(2, 18));
+          });
+
           // New Analytics & Risk
           setRiskMetrics(risk.calculateMetrics(snap));
           analytics.recordSnapshot(Date.now(), snap.cash, snap.positions);
@@ -101,7 +172,10 @@ export default function App() {
         }
       }, 2000);
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        unsubscribeExec();
+      };
     }
     init();
   }, []);
@@ -154,35 +228,15 @@ export default function App() {
     if (!qty || isNaN(Number(qty)) || Number(qty) <= 0) return;
     if (!portfolioRef.current || !identity) return;
 
-    const currentPrice = quotes.get(currentSymbol)?.price || 0;
     const side: OrderSide = buySide ? 'BUY' : 'SELL';
     
-    const payload = {
-      ts: new Date().toISOString(),
-      side,
-      qty: Number(qty),
-      symbol: currentSymbol,
-      price: currentPrice,
-      lattice_res: 671.6
-    };
-
     try {
-      const sig = await signPayload(payload, identity.privateKey);
-      
-      const trade: Trade = {
-        id: Math.random().toString(36).substring(7),
-        orderId: 'ORD-' + Math.random().toString(36).substring(7).toUpperCase(),
+      tradeEngine.submitOrder({
         symbol: currentSymbol,
         side,
-        qty: Number(qty),
-        price: currentPrice,
-        timestamp: payload.ts,
-        proof: sig
-      };
-
-      portfolioRef.current.executeTrade(trade);
-      setPortfolio(portfolioRef.current.getSnapshot());
-      setPerformance(portfolioRef.current.calculatePerformance());
+        type: 'MARKET',
+        qty: Number(qty)
+      });
       setQty('');
     } catch (e: any) {
       alert(e.message);
@@ -248,6 +302,7 @@ export default function App() {
 
           <Panel title="Activity Feed" className="flex-1">
             <div className="p-3 space-y-4">
+              <div className="text-[9px] font-bold text-muted uppercase tracking-[2px] mb-2">Trade Execution</div>
               <AnimatePresence mode="popLayout">
                 {portfolio?.tradeHistory.slice().reverse().map((trade) => (
                   <motion.div 
@@ -264,12 +319,31 @@ export default function App() {
                     <div className="text-[11px] text-muted font-medium">
                       {trade.qty} @ ${(trade.price / 100).toFixed(2)}
                     </div>
-                    <div className="text-[8px] font-mono text-cyan truncate mt-1 opacity-50 uppercase">
-                      Proof: {trade.proof.slice(0, 16)}...
-                    </div>
                   </motion.div>
                 ))}
               </AnimatePresence>
+
+              {/* Event Streams */}
+              <div className="mt-6 pt-4 border-t border-border/50">
+                <div className="text-[9px] font-bold text-muted uppercase tracking-widest mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Activity size={10} className="text-cyan" />
+                    Lattice Events
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-[120px] overflow-auto pr-2 pb-2">
+                  {engineEvents.map((e, i) => (
+                    <div key={i} className="text-[9px] font-mono border-b border-border/20 pb-1 last:border-0">
+                      <span className="text-muted/50">[{new Date(e.timestamp).toLocaleTimeString([], { hour12: false })}]</span>{' '}
+                      <span className={e.type.includes('Filled') ? 'text-green' : 'text-cyan'}>{e.type.toUpperCase()}</span>{' '}
+                      <span className="text-text/70">{e.data.symbol} {e.data.qty || e.data.side}</span>
+                    </div>
+                  ))}
+                  {engineEvents.length === 0 && (
+                    <div className="text-[9px] text-muted/30 italic">No events recorded</div>
+                  )}
+                </div>
+              </div>
 
               {/* Synthetic Insights */}
               <div className="mt-6 pt-4 border-t border-border/50">
