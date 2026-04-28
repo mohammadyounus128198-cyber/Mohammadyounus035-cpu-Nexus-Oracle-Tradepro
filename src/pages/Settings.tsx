@@ -13,12 +13,11 @@ import {
 import { useTrade } from '../context/TradeContext';
 
 const Settings: React.FC = () => {
-  const { identity } = useTrade();
+  const { identity, resetSession } = useTrade();
 
   const handleClearSession = () => {
     if (window.confirm("Permanently purge sovereign session and identity keys?")) {
-      localStorage.clear();
-      window.location.reload();
+      resetSession();
     }
   };
 

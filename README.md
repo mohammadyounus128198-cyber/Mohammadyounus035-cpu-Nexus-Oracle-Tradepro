@@ -1,20 +1,27 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# NEXUS ORACLE: Sovereign Trading Node v4.0
 
-# Run and deploy your AI Studio app
+A high-performance, cryptographically verified trading dashboard built for sovereign asset management.
 
-This contains everything you need to run your app locally.
+## 🚀 Core Features
 
-View your app in AI Studio: https://ai.studio/apps/827e9dc1-326a-4ac0-90e5-b55489c31337
+- **Sovereign Identity**: Local-only Ed25519 key generation via `indexedDB`. Every trade is cryptographically signed and stored in a tamper-proof Global Ledger.
+- **Lattice Trading Engine**: Event-driven order execution supporting Market, Limit, and Stop orders with sub-millisecond propagation.
+- **Risk Oracle**: Real-time VaR (Value at Risk) calculation, exposure limits, and pre-trade simulation to prevent liquidation events.
+- **Harmonic Synchronization**: System heartbeat synchronized at 671.6 Hz for deterministic state updates and audit consistency.
+- **High-Fidelity Analytics**: Dynamic performance metrics including Sharpe Ratio, Alpha, and Max Drawdown visualization using Recharts.
+- **Persistent State**: Automatic session recovery via `localStorage` and `indexedDB` for portfolio snapshots and identity verification.
 
-## Run Locally
+## 🛠 Tech Stack
 
-**Prerequisites:**  Node.js
+- **Frontend**: React 18, Vite, Tailwind CSS
+- **Cryptography**: Web Crypto API (Ed25519, SHA-256)
+- **Animation**: Motion (motion/react)
+- **Icons**: Lucide React
+- **Data Flow**: Custom event-driven Trade Engine with Portfolios and Risk Management layers.
 
+## 🛡 Security & Privacy
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+This node is designed with a **privacy-first** architecture. All sensitive data (Private Keys, Trade Proofs, Portfolio History) is stored locally in your browser's secure sandbox. No data is ever transmitted to a central server.
+
+---
+*Build by Nexus Oracle Group • 2026*

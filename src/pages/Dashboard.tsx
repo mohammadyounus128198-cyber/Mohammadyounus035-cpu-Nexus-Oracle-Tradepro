@@ -108,37 +108,42 @@ const Dashboard: React.FC = () => {
   return (
     <div className="p-6 h-full flex flex-col gap-6 overflow-hidden">
       {/* Header Info */}
-      <header className="flex justify-between items-center">
+      <header className="flex justify-between items-center bg-panel/20 p-4 rounded-xl border border-border/20 backdrop-blur-sm">
         <div>
           <h2 className="text-2xl font-black tracking-tighter text-text uppercase">
-            Lattice Core <span className="text-accent">0x{currentSymbol}</span>
+            Lattice Core <span className="text-accent underline decoration-accent/30 underline-offset-4">0x{currentSymbol}</span>
           </h2>
           <div className="flex gap-4 mt-1">
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-green shadow-[0_0_8px_#00ff88]" />
-              <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Network Verified</span>
+              <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Verified • 671.6 Hz</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-cyan shadow-[0_0_8px_#00d4ff]" />
-              <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Quantum Persistent</span>
+              <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Node Health: HEALTHY</span>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          {['AAPL', 'NVDA', 'TSLA', 'BTC'].map((sym) => (
-            <button 
-              key={sym}
-              onClick={() => setCurrentSymbol(sym)}
-              className={`px-4 py-2 rounded font-mono text-xs font-bold transition-all border ${
-                currentSymbol === sym 
-                ? 'bg-accent/10 border-accent text-accent shadow-[0_0_15px_rgba(255,51,51,0.2)]' 
-                : 'bg-panel border-border/50 text-muted hover:border-text/30'
-              }`}
-            >
-              {sym}
-            </button>
-          ))}
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex gap-2">
+            {['AAPL', 'NVDA', 'TSLA', 'BTC'].map((sym) => (
+              <button 
+                key={sym}
+                onClick={() => setCurrentSymbol(sym)}
+                className={`px-3 py-1.5 rounded font-mono text-[10px] font-bold transition-all border ${
+                  currentSymbol === sym 
+                  ? 'bg-accent/10 border-accent text-accent shadow-[0_0_15px_rgba(255,51,51,0.2)]' 
+                  : 'bg-panel border-border/50 text-muted hover:border-text/30'
+                }`}
+              >
+                {sym}
+              </button>
+            ))}
+          </div>
+          <div className="text-[9px] font-mono text-muted/60 tracking-widest uppercase">
+            LATENCY: {(Math.random() * 0.4 + 0.1).toFixed(3)}ms
+          </div>
         </div>
       </header>
 

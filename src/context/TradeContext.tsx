@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { sessionStore } from '../lib/sessionStore';
 import { 
   MarketDataEngine, 
   Quote 
@@ -26,6 +27,7 @@ interface TradeContextType {
   engineEvents: EngineEvent[];
   marketService: RealtimeMarketService | null;
   teInstance: typeof teInstance;
+  resetSession: () => void;
 }
 
 const TradeContext = createContext<TradeContextType | undefined>(undefined);
@@ -85,10 +87,17 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const { trade } = event.data;
         portfolioManager.executeTrade(trade);
         const snap = portfolioManager.getSnapshot();
-        setPortfolio({
+        const formattedSnap = {
           ...snap,
           positions: Array.from(snap.positions.values())
-        } as any);
+        } as any;
+        setPortfolio(formattedSnap);
+        
+        // Persist session state
+        sessionStore.save({
+          portfolio: formattedSnap,
+          identity: id
+        });
       });
 
       // Listen for all events for terminal
@@ -146,6 +155,11 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     init();
   }, []);
 
+  const resetSession = () => {
+    sessionStore.purge();
+    window.location.reload();
+  };
+
   return (
     <TradeContext.Provider value={{
       identity,
@@ -154,7 +168,8 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       riskMetrics,
       engineEvents,
       marketService: marketServiceRef.current,
-      teInstance
+      teInstance,
+      resetSession
     }}>
       {children}
     </TradeContext.Provider>
