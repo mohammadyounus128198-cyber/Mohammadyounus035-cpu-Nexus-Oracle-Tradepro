@@ -85,9 +85,9 @@ export async function hashObject(obj: any): Promise<string> {
 
 // --- Identity Management ---
 
-export interface Identity {
-  publicKey: Uint8Array;
-  privateKey: CryptoKey | Uint8Array;
+export interface SovereignIdentity {
+  publicKey: string;
+  privateKey: string;
   fingerprint: string;
   isNew: boolean;
 }
@@ -114,7 +114,28 @@ async function computeFingerprint(publicKey: Uint8Array): Promise<string> {
   return hex.slice(0, 16); // Truncate to 16 chars for display
 }
 
-export async function getOrCreateIdentity(): Promise<Identity> {
+export async function verifySignature(signature: string, payload: any, publicKeyHex: string): Promise<boolean> {
+  try {
+    const pubBytes = new Uint8Array(publicKeyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    const sigBytes = new Uint8Array(signature.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    const dataBytes = new TextEncoder().encode(canonical(payload));
+    
+    const pubKey = await crypto.subtle.importKey(
+      'raw',
+      pubBytes,
+      { name: 'Ed25519' },
+      true,
+      ['verify']
+    );
+    
+    return await crypto.subtle.verify('Ed25519', pubKey, sigBytes, dataBytes);
+  } catch (e) {
+    console.error('Core integrity failure during verification:', e);
+    return false;
+  }
+}
+
+export async function getOrCreateIdentity(): Promise<SovereignIdentity> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
@@ -127,18 +148,9 @@ export async function getOrCreateIdentity(): Promise<Identity> {
         const pub = new Uint8Array(identity.publicKey);
         const fingerprint = await computeFingerprint(pub);
         
-        // Import the private key for signing
-        const privKey = await crypto.subtle.importKey(
-          'pkcs8',
-          new Uint8Array(identity.privateKey),
-          { name: 'Ed25519' },
-          false,
-          ['sign']
-        );
-
         resolve({
-          publicKey: pub,
-          privateKey: privKey,
+          publicKey: Array.from(pub).map(b => b.toString(16).padStart(2, '0')).join(''),
+          privateKey: 'ENCRYPTED_LOCAL_KEY',
           fingerprint,
           isNew: false,
         });
@@ -166,8 +178,8 @@ export async function getOrCreateIdentity(): Promise<Identity> {
         
         tx2.oncomplete = () => {
           resolve({
-            publicKey: pub,
-            privateKey: keyPair.privateKey as CryptoKey,
+            publicKey: Array.from(pub).map(b => b.toString(16).padStart(2, '0')).join(''),
+            privateKey: 'ENCRYPTED_LOCAL_KEY',
             fingerprint,
             isNew: true,
           });

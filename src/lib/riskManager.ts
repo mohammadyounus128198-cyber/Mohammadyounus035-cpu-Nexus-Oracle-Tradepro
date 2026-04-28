@@ -75,7 +75,7 @@ export class RiskManager {
     let volExposure = 0;
 
     portfolio.positions.forEach((pos, sym) => {
-      const value = pos.qty * pos.currentPrice;
+      const value = pos.shares * pos.currentPrice;
       positionValue += value;
 
       const pct = (value / portfolio.nav) * 100;

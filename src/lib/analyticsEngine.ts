@@ -38,7 +38,7 @@ export class AnalyticsEngine {
   recordSnapshot(timestamp: number, cash: number, positions: Map<string, Position>): void {
     let invested = 0;
     positions.forEach(p => {
-        invested += p.qty * p.currentPrice;
+        invested += p.shares * p.currentPrice;
     });
 
     this.equityCurve.push({

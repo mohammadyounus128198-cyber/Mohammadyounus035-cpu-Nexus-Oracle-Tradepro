@@ -6,108 +6,94 @@ import { Quote, Trade } from './engine';
 
 export interface Position {
   symbol: string;
-  qty: number;
-  avgPrice: number;
+  shares: number;
+  avgCost: number;
   currentPrice: number;
+  pnl: number;
 }
 
-export interface Portfolio {
-  cash: number; // in cents
-  nav: number;  // in cents
+export interface PortfolioSnapshot {
+  cash: number;
+  nav: number;
   positions: Map<string, Position>;
   tradeHistory: Trade[];
 }
 
-export interface Performance {
-  sharpe: number;
-  maxDrawdown: number;
-  winRate: number;
-  dailyReturns: number[];
-}
+export type Portfolio = PortfolioSnapshot;
 
 export class PortfolioManager {
-  private portfolio: Portfolio;
+  private cash: number;
+  private nav: number;
+  private positions: Map<string, Position>;
+  private tradeHistory: Trade[];
   private peakNav: number;
 
-  constructor(initialCash: number = 10000000) { // $100,000.00
-    this.portfolio = {
-      cash: initialCash,
-      nav: initialCash,
-      positions: new Map(),
-      tradeHistory: [],
-    };
+  constructor(initialCash: number = 10000000) {
+    this.cash = initialCash;
+    this.nav = initialCash;
+    this.positions = new Map();
+    this.tradeHistory = [];
     this.peakNav = initialCash;
   }
 
   updatePrices(quotes: Map<string, Quote>) {
     let positionValue = 0;
-    this.portfolio.positions.forEach((pos, sym) => {
+    this.positions.forEach((pos, sym) => {
       const quote = quotes.get(sym);
       if (quote) {
         pos.currentPrice = quote.price;
-        positionValue += pos.qty * pos.currentPrice;
+        pos.pnl = (pos.currentPrice - pos.avgCost) * pos.shares;
+        positionValue += pos.shares * pos.currentPrice;
       }
     });
-    this.portfolio.nav = this.portfolio.cash + positionValue;
-    if (this.portfolio.nav > this.peakNav) {
-      this.peakNav = this.portfolio.nav;
+    this.nav = this.cash + positionValue;
+    if (this.nav > this.peakNav) {
+      this.peakNav = this.nav;
     }
   }
 
   executeTrade(trade: Trade) {
     const total = trade.qty * trade.price;
     if (trade.side === 'BUY') {
-      if (this.portfolio.cash < total) throw new Error('Insufficient funds');
-      this.portfolio.cash -= total;
+      if (this.cash < total) throw new Error('Insufficient funds');
+      this.cash -= total;
       
-      const existing = this.portfolio.positions.get(trade.symbol) || {
+      const existing = this.positions.get(trade.symbol) || {
         symbol: trade.symbol,
-        qty: 0,
-        avgPrice: 0,
-        currentPrice: trade.price
+        shares: 0,
+        avgCost: 0,
+        currentPrice: trade.price,
+        pnl: 0
       };
       
-      const newQty = existing.qty + trade.qty;
-      existing.avgPrice = Math.round((existing.avgPrice * existing.qty + total) / newQty);
-      existing.qty = newQty;
+      const newShares = existing.shares + trade.qty;
+      existing.avgCost = Math.round((existing.avgCost * existing.shares + total) / newShares);
+      existing.shares = newShares;
       existing.currentPrice = trade.price;
-      this.portfolio.positions.set(trade.symbol, existing);
+      existing.pnl = (existing.currentPrice - existing.avgCost) * existing.shares;
+      this.positions.set(trade.symbol, existing);
     } else {
-      const existing = this.portfolio.positions.get(trade.symbol);
-      if (!existing || existing.qty < trade.qty) throw new Error('Insufficient shares');
+      const existing = this.positions.get(trade.symbol);
+      if (!existing || existing.shares < trade.qty) throw new Error('Insufficient shares');
       
-      this.portfolio.cash += total;
-      existing.qty -= trade.qty;
-      if (existing.qty === 0) {
-        this.portfolio.positions.delete(trade.symbol);
+      this.cash += total;
+      existing.shares -= trade.qty;
+      if (existing.shares === 0) {
+        this.positions.delete(trade.symbol);
       } else {
-        this.portfolio.positions.set(trade.symbol, existing);
+        existing.pnl = (existing.currentPrice - existing.avgCost) * existing.shares;
+        this.positions.set(trade.symbol, existing);
       }
     }
-    this.portfolio.tradeHistory.push(trade);
+    this.tradeHistory.push(trade);
   }
 
-  getSnapshot(): Portfolio {
+  getSnapshot(): PortfolioSnapshot {
     return {
-      ...this.portfolio,
-      positions: new Map(this.portfolio.positions)
-    };
-  }
-
-  calculatePerformance(): Performance {
-    const trades = this.portfolio.tradeHistory;
-    const wins = trades.filter((t, i) => {
-      // Very simplified win rate: just check if price went up from buy/sold (this is mock)
-      return Math.random() > 0.4;
-    }).length;
-
-    const drawdown = this.peakNav > 0 ? (this.peakNav - this.portfolio.nav) / this.peakNav : 0;
-
-    return {
-      sharpe: 3.42, // Static mock for visual fidelity as requested
-      maxDrawdown: drawdown * 100,
-      winRate: trades.length > 0 ? (wins / trades.length) * 100 : 100,
-      dailyReturns: []
+      cash: this.cash,
+      nav: this.nav,
+      positions: new Map(this.positions),
+      tradeHistory: [...this.tradeHistory]
     };
   }
 }
