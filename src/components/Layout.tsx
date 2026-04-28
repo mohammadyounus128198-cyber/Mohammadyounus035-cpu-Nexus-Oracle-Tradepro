@@ -26,7 +26,10 @@ const Layout: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-bg text-text overflow-hidden font-sans">
+    <div className="flex h-screen bg-bg text-text overflow-hidden font-sans relative">
+      <div className="absolute inset-0 bg-grid pointer-events-none opacity-20" />
+      <div className="scanline z-50 opacity-10" />
+      
       {/* Sidebar Navigation */}
       <aside className="w-64 border-r border-border/50 bg-panel/30 flex flex-col relative">
         <div className="p-6 border-b border-border/50 bg-panel/20 backdrop-blur-sm">
@@ -69,13 +72,13 @@ const Layout: React.FC = () => {
           <div className="mt-4 pt-4 border-t border-border/10">
             <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-wider mb-2">
               <span className="text-muted">Node Status</span>
-              <span className={riskMetrics?.status === 'HEALTHY' ? 'text-green' : 'text-accent'}>
-                {riskMetrics?.status || 'INITIALIZING'}
+              <span className={riskMetrics?.status === 'green' ? 'text-green' : (riskMetrics?.status === 'yellow' ? 'text-yellow' : 'text-accent')}>
+                {riskMetrics?.status?.toUpperCase() || 'INITIALIZING'}
               </span>
             </div>
             <div className="h-1 bg-border/20 rounded-full overflow-hidden">
               <motion.div 
-                className={`h-full ${riskMetrics?.status === 'HEALTHY' ? 'bg-green' : 'bg-accent'}`}
+                className={`h-full ${riskMetrics?.status === 'green' ? 'bg-green' : (riskMetrics?.status === 'yellow' ? 'bg-yellow' : 'bg-accent')}`}
                 initial={{ width: 0 }}
                 animate={{ width: '100%' }}
                 transition={{ duration: 0.5 }}

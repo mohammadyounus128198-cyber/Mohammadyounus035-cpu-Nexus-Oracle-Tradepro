@@ -16,12 +16,13 @@ import { tradeEngine } from '../lib/tradeEngine';
 
 // --- Sub-components (could be moved to separate files) ---
 
-const Panel: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ 
+const Panel: React.FC<{ title: string; children: React.ReactNode; className?: string; glow?: string }> = ({ 
   title, 
   children, 
-  className 
+  className,
+  glow = "lattice-glow"
 }) => (
-  <div className={`bg-panel border border-border/50 rounded-xl overflow-hidden flex flex-col shadow-2xl relative group ${className}`}>
+  <div className={`bg-panel/80 border border-border/50 rounded-xl overflow-hidden flex flex-col shadow-2xl relative group backdrop-blur-md ${glow} ${className}`}>
     <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
     <div className="px-5 py-4 border-b border-border/50 flex justify-between items-center bg-black/20 backdrop-blur-sm z-10">
       <h3 className="text-[11px] font-black uppercase tracking-[2px] text-accent flex items-center gap-2">
@@ -70,7 +71,7 @@ const TradeGraphic: React.FC<{ quotes: Map<string, any>, currentSymbol: string }
           animate={{ scale: 1, opacity: 1 }}
           className="text-6xl font-mono font-black tracking-tighter"
         >
-          {(q.price / 100).toFixed(2)}
+          {(Number(q.price || 0) / 100).toFixed(2)}
         </motion.div>
         <div className="text-[10px] uppercase tracking-[4px] font-bold text-muted mt-2">
           Real-time Latency: <span className="text-cyan">{(Math.random() * 2).toFixed(2)}ms</span>
@@ -152,11 +153,11 @@ const Dashboard: React.FC = () => {
         
         {/* Left Column: Risk & Holdings */}
         <div className="col-span-3 flex flex-col gap-6 min-h-0">
-          <Panel title="Risk Shield" className="h-fit">
+          <Panel title="Risk Shield" className="h-fit" glow={riskMetrics?.status === 'green' ? 'green-glow' : 'lattice-glow'}>
             <div className="p-4 grid grid-cols-2 gap-3">
               <div className="p-3 bg-black/20 rounded-lg border border-border/10">
                 <div className="text-[8px] font-bold text-muted uppercase tracking-wider mb-1">Exposure</div>
-                <div className="text-lg font-mono font-bold text-green">{(riskMetrics?.totalExposure || 0).toFixed(2)}%</div>
+                <div className="text-lg font-mono font-bold text-green">{(Number(riskMetrics?.totalExposure || 0)).toFixed(2)}%</div>
               </div>
               <div className="p-3 bg-black/20 rounded-lg border border-border/10">
                 <div className="text-[8px] font-bold text-muted uppercase tracking-wider mb-1">Leverage</div>
@@ -164,7 +165,7 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="p-3 bg-black/20 rounded-lg border border-border/10">
                 <div className="text-[8px] font-bold text-muted uppercase tracking-wider mb-1">VaR (95%)</div>
-                <div className="text-lg font-mono font-bold text-yellow">{(riskMetrics?.volatilityAdjustedExposure || 0).toFixed(2)}</div>
+                <div className="text-lg font-mono font-bold text-yellow">{(Number(riskMetrics?.volatilityAdjustedExposure || 0)).toFixed(2)}</div>
               </div>
               <div className="p-3 bg-black/20 rounded-lg border border-border/10">
                 <div className="text-[8px] font-bold text-muted uppercase tracking-wider mb-1">Health</div>
@@ -182,7 +183,7 @@ const Dashboard: React.FC = () => {
             )}
           </Panel>
 
-          <Panel title="Sovereign Holdings" className="flex-1">
+          <Panel title="Sovereign Holdings" className="flex-1" glow="cyan-glow">
             <div className="p-4 space-y-4">
               <div className="flex justify-between items-end mb-4">
                 <div>
@@ -204,10 +205,10 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <div className={`text-[11px] font-bold ${pos.pnl >= 0 ? 'text-green' : 'text-accent'}`}>
-                        {pos.pnl >= 0 ? '+' : ''}{(pos.pnl / 100).toFixed(2)}
+                        {pos.pnl >= 0 ? '+' : ''}{(Number(pos.pnl || 0) / 100).toFixed(2)}
                       </div>
                       <div className="text-[9px] text-muted/50 font-mono">
-                        ${(pos.currentPrice / 100).toFixed(2)}
+                        ${(Number(pos.currentPrice || 0) / 100).toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -293,7 +294,7 @@ const Dashboard: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-[11px] text-muted font-medium font-mono">
-                        {trade.qty} @ ${(trade.price / 100).toFixed(2)}
+                        {trade.qty} @ ${(Number(trade.price || 0) / 100).toFixed(2)}
                       </div>
                     </motion.div>
                   ))}

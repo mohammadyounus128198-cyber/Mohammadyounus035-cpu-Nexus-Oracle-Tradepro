@@ -35,10 +35,10 @@ const Analytics: React.FC = () => {
     const winRate = (wins / trades.length) * 100;
     
     return {
-      winRate: winRate.toFixed(1),
+      winRate: (Number(winRate || 0)).toFixed(1),
       sharpe: 3.42,
       profitFactor: 2.15,
-      maxDD: (riskMetrics?.currentDrawdown || 0).toFixed(2),
+      maxDD: (Number(riskMetrics?.currentDrawdown || 0)).toFixed(2),
       tradesCount: trades.length,
       avgWin: 124.50,
       avgLoss: 56.20

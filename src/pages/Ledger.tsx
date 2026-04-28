@@ -99,7 +99,7 @@ const Ledger: React.FC = () => {
                     <span className="text-[9px] text-muted opacity-50">{trade.side}</span>
                   </div>
                   <div className="text-[11px] font-mono text-muted">
-                    {trade.qty} @ {(trade.price/100).toFixed(2)}
+                    {trade.qty} @ {(Number(trade.price || 0) / 100).toFixed(2)}
                   </div>
                   <div className="text-right flex items-center justify-end gap-2">
                     <span className="text-[9px] font-mono text-cyan/70 opacity-40 group-hover:opacity-100 transition-opacity">
@@ -150,8 +150,8 @@ const Ledger: React.FC = () => {
                 <div className="space-y-6 flex-1 min-h-0 overflow-auto pr-4">
                   <DetailItem label="Asset" value={`${selectedTrade.symbol} • ${selectedTrade.side}`} icon={<Fingerprint size={12}/>} />
                   <DetailItem label="Quantity" value={`${selectedTrade.qty} UNITS`} icon={<Database size={12}/>} />
-                  <DetailItem label="Fill Price" value={`$${(selectedTrade.price / 100).toFixed(2)}`} />
-                  <DetailItem label="Total Basis" value={`$${((selectedTrade.price * selectedTrade.qty) / 100).toLocaleString()}`} />
+                  <DetailItem label="Fill Price" value={`$${(Number(selectedTrade.price || 0) / 100).toFixed(2)}`} />
+                  <DetailItem label="Total Basis" value={`$${((Number(selectedTrade.price || 0) * selectedTrade.qty) / 100).toLocaleString()}`} />
                   <DetailItem label="Timestamp" value={new Date(selectedTrade.timestamp).toLocaleString()} icon={<Clock size={12}/>} />
                   
                   <div className="mt-8 pt-6 border-t border-border/30">
