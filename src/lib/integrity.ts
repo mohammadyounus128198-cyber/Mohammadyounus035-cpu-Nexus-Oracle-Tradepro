@@ -16,6 +16,9 @@ export function canonical(obj: any): string {
   return _canonicalize(obj);
 }
 
+// Alias for engine compatibility
+export const canonicalize = canonical;
+
 function _canonicalize(obj: any): string {
   if (obj === null) return 'null';
   if (typeof obj === 'boolean') return obj ? 'true' : 'false';
@@ -73,6 +76,11 @@ export async function canonicalHash(obj: any): Promise<string> {
   return Array.from(new Uint8Array(hashBuffer))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
+}
+
+// Alias for engine compatibility
+export async function hashObject(obj: any): Promise<string> {
+  return canonicalHash(obj);
 }
 
 // --- Identity Management ---

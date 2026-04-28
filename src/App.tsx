@@ -28,8 +28,10 @@ import {
 import { 
   PortfolioManager, 
   Portfolio, 
-  Performance 
 } from './lib/state';
+import { RiskManager, DEFAULT_RISK_CONFIG, RiskMetrics } from './lib/riskManager';
+import { AnalyticsEngine, PerformanceMetrics } from './lib/analyticsEngine';
+import runIntegrationTests from '../tradepro.test';
 
 // --- Sub-components ---
 
@@ -61,7 +63,8 @@ export default function App() {
   const [identity, setIdentity] = useState<any>(null);
   const [quotes, setQuotes] = useState<Map<string, Quote>>(new Map());
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
-  const [performance, setPerformance] = useState<Performance | null>(null);
+  const [riskMetrics, setRiskMetrics] = useState<RiskMetrics | null>(null);
+  const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics | null>(null);
   const [currentSymbol, setCurrentSymbol] = useState('AAPL');
   const [qty, setQty] = useState('');
   const [buySide, setBuySide] = useState(true);
@@ -79,6 +82,8 @@ export default function App() {
 
       engineRef.current = new MarketDataEngine();
       portfolioRef.current = new PortfolioManager();
+      const risk = new RiskManager(DEFAULT_RISK_CONFIG, 10000000);
+      const analytics = new AnalyticsEngine();
       
       const interval = setInterval(() => {
         if (engineRef.current && portfolioRef.current) {
@@ -86,8 +91,13 @@ export default function App() {
           setQuotes(new Map(newQuotes));
           
           portfolioRef.current.updatePrices(newQuotes);
-          setPortfolio(portfolioRef.current.getSnapshot());
-          setPerformance(portfolioRef.current.calculatePerformance());
+          const snap = portfolioRef.current.getSnapshot();
+          setPortfolio(snap);
+          
+          // New Analytics & Risk
+          setRiskMetrics(risk.calculateMetrics(snap));
+          analytics.recordSnapshot(Date.now(), snap.cash, snap.positions);
+          setPerformanceMetrics(analytics.calculateMetrics(snap.tradeHistory));
         }
       }, 2000);
 
@@ -218,9 +228,22 @@ export default function App() {
           </Panel>
 
           <Panel title="Performance Analytics">
-            <MetricRow label="SHARPE RATIO" value={performance?.sharpe.toFixed(2) || "3.42"} colorClass="text-green" />
-            <MetricRow label="MAX DRAWDOWN" value={`${performance?.maxDrawdown.toFixed(2) || "0.00"}%`} colorClass="text-accent" />
-            <MetricRow label="WIN RATE" value={`${performance?.winRate.toFixed(1) || "100.0"}%`} colorClass="text-cyan" />
+            <MetricRow label="SHARPE RATIO" value={performanceMetrics?.sharpeRatio.toFixed(2) || "3.42"} colorClass="text-green" />
+            <MetricRow label="MAX DRAWDOWN" value={`${performanceMetrics?.maxDrawdown.toFixed(2) || "0.00"}%`} colorClass="text-accent" />
+            <MetricRow label="WIN RATE" value={`${performanceMetrics?.winRate.toFixed(1) || "100.0"}%`} colorClass="text-cyan" />
+            <div className="p-4 border-t border-border/50">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '4px' }}>
+                            <span className="text-muted uppercase">Exposure</span>
+                            <span className={riskMetrics?.totalExposure! > 60 ? "text-accent" : "text-green"}>{riskMetrics?.totalExposure.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                            <div className={`h-full transition-all duration-1000 ${riskMetrics?.totalExposure! > 60 ? "bg-accent" : "bg-green"}`} style={{ width: `${riskMetrics?.totalExposure}%` }} />
+                        </div>
+                    </div>
+                </div>
+            </div>
           </Panel>
 
           <Panel title="Activity Feed" className="flex-1">
@@ -250,9 +273,17 @@ export default function App() {
 
               {/* Synthetic Insights */}
               <div className="mt-6 pt-4 border-t border-border/50">
-                <div className="text-[9px] font-bold text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Zap size={10} className="text-yellow" />
-                  Oracle Telemetry
+                <div className="text-[9px] font-bold text-muted uppercase tracking-widest mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap size={10} className="text-yellow" />
+                    Oracle Telemetry
+                  </div>
+                  <button 
+                    onClick={() => runIntegrationTests()}
+                    className="text-[8px] border border-border px-1.5 py-0.5 rounded hover:bg-white/5 active:scale-95 transition-all"
+                  >
+                    RUN DIAGNOSTICS
+                  </button>
                 </div>
                 <div className="space-y-3">
                   <div className="text-[10px] text-muted font-mono leading-relaxed transition-opacity">
