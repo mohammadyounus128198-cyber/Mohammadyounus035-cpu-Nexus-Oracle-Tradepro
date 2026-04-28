@@ -28,6 +28,9 @@ interface TradeContextType {
   marketService: RealtimeMarketService | null;
   teInstance: typeof teInstance;
   resetSession: () => void;
+  addTicker: (config: StockConfig) => void;
+  removeTicker: (symbol: string) => void;
+  getAvailableTickers: () => StockConfig[];
 }
 
 const TradeContext = createContext<TradeContextType | undefined>(undefined);
@@ -160,6 +163,18 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     window.location.reload();
   };
 
+  const addTicker = (config: any) => {
+    engineRef.current?.addTicker(config);
+  };
+
+  const removeTicker = (symbol: string) => {
+    engineRef.current?.removeTicker(symbol);
+  };
+
+  const getAvailableTickers = () => {
+    return engineRef.current?.getTickers() || [];
+  };
+
   return (
     <TradeContext.Provider value={{
       identity,
@@ -169,7 +184,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       engineEvents,
       marketService: marketServiceRef.current,
       teInstance,
-      resetSession
+      resetSession,
+      addTicker,
+      removeTicker,
+      getAvailableTickers
     }}>
       {children}
     </TradeContext.Provider>

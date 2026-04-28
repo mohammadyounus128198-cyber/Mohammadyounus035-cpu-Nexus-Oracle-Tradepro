@@ -18,24 +18,41 @@ export interface Quote {
   timestamp: string;
 }
 
-export const MARKET_DATA_CONFIG: Record<string, StockConfig> = {
-  AAPL: { symbol: 'AAPL', name: 'Apple Inc.', basePrice: 17542, volatility: 0.015, drift: 0.0005 },
-  NVDA: { symbol: 'NVDA', name: 'NVIDIA Corp.', basePrice: 88212, volatility: 0.025, drift: 0.001 },
-  TSLA: { symbol: 'TSLA', name: 'Tesla, Inc.', basePrice: 16847, volatility: 0.03, drift: -0.0002 },
-  BTC: { symbol: 'BTC', name: 'Bitcoin', basePrice: 6543200, volatility: 0.04, drift: 0.0008 },
-};
+export const DEFAULT_MARKET_DATA: StockConfig[] = [
+  { symbol: 'AAPL', name: 'Apple Inc.', basePrice: 17542, volatility: 0.015, drift: 0.0005 },
+  { symbol: 'NVDA', name: 'NVIDIA Corp.', basePrice: 88212, volatility: 0.025, drift: 0.001 },
+  { symbol: 'TSLA', name: 'Tesla, Inc.', basePrice: 16847, volatility: 0.03, drift: -0.0002 },
+  { symbol: 'BTC', name: 'Bitcoin', basePrice: 6543200, volatility: 0.04, drift: 0.0008 },
+];
 
 export class MarketDataEngine {
+  private configs: Map<string, StockConfig> = new Map();
   private prices: Map<string, number> = new Map();
   private history: Map<string, number[]> = new Map();
   private rngState: number;
 
   constructor(seed: number = 12345) {
     this.rngState = seed;
-    Object.keys(MARKET_DATA_CONFIG).forEach(sym => {
-      this.prices.set(sym, MARKET_DATA_CONFIG[sym].basePrice);
-      this.history.set(sym, Array.from({ length: 50 }, () => MARKET_DATA_CONFIG[sym].basePrice));
+    DEFAULT_MARKET_DATA.forEach(config => {
+      this.addTicker(config);
     });
+  }
+
+  addTicker(config: StockConfig) {
+    if (this.configs.has(config.symbol)) return;
+    this.configs.set(config.symbol, config);
+    this.prices.set(config.symbol, config.basePrice);
+    this.history.set(config.symbol, Array.from({ length: 50 }, () => config.basePrice));
+  }
+
+  removeTicker(symbol: string) {
+    this.configs.delete(symbol);
+    this.prices.delete(symbol);
+    this.history.delete(symbol);
+  }
+
+  getTickers(): StockConfig[] {
+    return Array.from(this.configs.values());
   }
 
   private rng(): number {
@@ -51,8 +68,7 @@ export class MarketDataEngine {
 
   tick(): Map<string, Quote> {
     const quotes = new Map<string, Quote>();
-    Object.keys(MARKET_DATA_CONFIG).forEach(sym => {
-      const config = MARKET_DATA_CONFIG[sym];
+    this.configs.forEach((config, sym) => {
       const current = this.prices.get(sym)!;
       
       // Geometric Brownian Motion

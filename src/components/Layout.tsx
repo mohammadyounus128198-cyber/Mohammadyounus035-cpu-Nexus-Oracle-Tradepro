@@ -1,14 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { 
-  LayoutDashboard, 
   History, 
   TrendingUp, 
   Settings, 
   Database,
   Cpu,
   ShieldCheck,
-  Activity
+  Activity,
+  Terminal,
+  Globe,
+  Layers,
+  Search,
+  BookOpen,
+  Map as MapIcon,
+  Shield
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTrade } from '../context/TradeContext';
@@ -49,11 +55,17 @@ const Layout: React.FC = () => {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
-          <NavItem to="/" icon={<LayoutDashboard size={18} />} label="Engine Dashboard" />
-          <NavItem to="/ledger" icon={<History size={18} />} label="Global Ledger" />
-          <NavItem to="/analytics" icon={<TrendingUp size={18} />} label="High-Fi Analytics" />
-          <NavItem to="/settings" icon={<Settings size={18} />} label="Node Settings" />
+        <nav className="flex-1 p-4 space-y-1 overflow-auto custom-scrollbar">
+          <NavItem to="/" icon={<Activity size={16} />} label="Console" />
+          <NavItem to="/lattice" icon={<Layers size={16} />} label="Lattice" />
+          <NavItem to="/tradepro" icon={<Terminal size={16} />} label="TradePro" />
+          <NavItem to="/markets" icon={<Globe size={16} />} label="Markets" />
+          <NavItem to="/ledger" icon={<History size={16} />} label="Ledger" />
+          <NavItem to="/analytics" icon={<TrendingUp size={16} />} label="Analytics" />
+          <NavItem to="/verify" icon={<Shield size={16} />} label="Verify" />
+          <NavItem to="/codex" icon={<BookOpen size={16} />} label="Codex" />
+          <NavItem to="/map" icon={<MapIcon size={16} />} label="Mystic Map" />
+          <NavItem to="/settings" icon={<Settings size={16} />} label="Settings" />
         </nav>
 
         <div className="p-4 mt-auto border-t border-border/50 bg-panel/10">
